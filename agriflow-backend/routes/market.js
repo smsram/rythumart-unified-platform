@@ -23,14 +23,11 @@ router.get('/prices', async (req, res) => {
 });
 
 // 2. UNIFIED ANALYSIS ENDPOINT (History + Forecast)
-// This replaces the separate /history and /predict endpoints for the chart
 router.post('/analyze', async (req, res) => {
   const { cropName, currentPrice } = req.body;
 
   try {
-    // Exact path to your python script
     const scriptPath = path.join(__dirname, '../ml/price_predictor.py');
-    
     const pythonProcess = spawn('python', [scriptPath]);
 
     // Send data to Python (Stdin)
@@ -39,38 +36,32 @@ router.post('/analyze', async (req, res) => {
 
     let dataString = '';
 
-    // Capture Output (Stdout)
     pythonProcess.stdout.on('data', (data) => {
       dataString += data.toString();
     });
 
-    // Capture Errors (Stderr) - With Filter for Warnings
     pythonProcess.stderr.on('data', (data) => {
       const msg = data.toString();
-      // Ignore "UserWarning" from sklearn to keep console clean
       if (!msg.includes('UserWarning')) {
           console.error(`Python Logic Log: ${msg}`);
       }
     });
 
-    // Handle Process Close
     pythonProcess.on('close', (code) => {
       try {
         if (!dataString) throw new Error("No data returned from Python script");
         
         const result = JSON.parse(dataString);
         
-        // Check if Python sent an error object
         if (result.error) {
             console.error("Python Script Error:", result.error);
             return res.status(500).json(result);
         }
 
-        res.json(result); // Returns { history: [...], forecast: [...] }
+        res.json(result); 
         
       } catch (e) {
         console.error("JSON Parse Error:", e);
-        // Don't show raw error to user, show fallback
         res.status(500).json({ 
             error: "Failed to analyze market", 
             details: "Prediction engine failed to return valid JSON." 

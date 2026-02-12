@@ -240,16 +240,19 @@ const RetailerOrders = () => {
                       <Image source={{ uri: item.crop?.imageUrl || 'https://via.placeholder.com/100' }} style={styles.prodImg} />
                       <View style={styles.info}>
                         <Text style={styles.prodName}>{item.crop?.name || "Unknown"}</Text>
-                        <Text style={styles.qty}>Qty: {item.quantity} {item.unit}</Text>
+                        
+                        {/* UPDATED: Unit Display Logic (Default to 'kg') */}
+                        <Text style={styles.qty}>Qty: {item.quantity} {item.unit || 'kg'}</Text>
+                        
                         <Text style={styles.farmer}>Farmer: {item.crop?.farmer?.name || "Verified"}</Text>
-                        <Text style={styles.price}>₹{item.totalPrice.toLocaleString()}</Text>
+                        <Text style={styles.price}>Total: ₹{item.totalPrice.toLocaleString()}</Text>
                       </View>
                     </View>
 
                     {activeTab === 'Active' && (
                         <View>
                             <View style={styles.btnRow}>
-                                <TouchableOpacity style={styles.trackBtn} onPress={() => handleTrack(item)}>
+                                <TouchableOpacity style={styles.trackBtn} onPress={() => setAlertConfig({visible:true, title:"Tracking", message: "Live tracking simulation enabled."})}>
                                     <Text style={styles.trackText}>Track</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.callBtn} onPress={() => handleCall(item.crop?.farmer?.phone)}>
@@ -301,7 +304,7 @@ const styles = StyleSheet.create({
   prodImg: { width: 80, height: 80, borderRadius: 10, marginRight: 15, backgroundColor: '#F3F4F6' },
   info: { flex: 1, justifyContent: 'center' },
   prodName: { fontSize: 16, fontWeight: 'bold', color: '#0F172A' },
-  qty: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  qty: { fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: '500' },
   farmer: { fontSize: 12, color: '#475569', fontWeight:'600' },
   price: { fontSize: 16, fontWeight: 'bold', color: '#16A34A', marginTop: 4 },
 

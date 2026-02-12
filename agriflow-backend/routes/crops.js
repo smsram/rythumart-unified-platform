@@ -1,4 +1,3 @@
-// agriflow-backend/routes/crops.js
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
@@ -16,7 +15,6 @@ function generateId() {
 
 // CREATE CROP
 router.post('/add', async (req, res) => {
-  // Add location, latitude, longitude to destructuring
   const { name, price, quantity, farmerId, imageUrl, aiGrade, qualityScore, location, latitude, longitude } = req.body;
   
   try {
@@ -25,14 +23,13 @@ router.post('/add', async (req, res) => {
         id: generateId(),
         name,
         price: parseFloat(price),
-        unit: "/Quintal",
+        unit: "kg", // Standardized
         quantity: parseFloat(quantity),
-        quantityUnit: "Tons",
+        quantityUnit: "kg", // Standardized
         imageUrl: imageUrl, 
         aiGrade: aiGrade || "Pending",
         qualityScore: parseInt(qualityScore) || 0,
         
-        // --- NEW FIELDS ---
         location: location || "Unknown Location",
         latitude: parseFloat(latitude) || 0.0,
         longitude: parseFloat(longitude) || 0.0,
@@ -62,13 +59,12 @@ router.get('/farmer/:id', async (req, res) => {
   }
 });
 
-// --- GET MARKETPLACE LISTINGS (For Retailer Home) ---
 // GET MARKETPLACE LISTINGS
 router.get('/market', async (req, res) => {
   try {
     const crops = await prisma.crop.findMany({
       where: { 
-        status: 'ACTIVE' // Only show active crops
+        status: 'ACTIVE' 
       },
       include: { 
         farmer: { 
@@ -79,7 +75,7 @@ router.get('/market', async (req, res) => {
             phone: true, 
             isVerified: true,
             rating: true,
-            profileImage: true // <--- ADDED: This fixes the missing image issue
+            profileImage: true 
           } 
         } 
       }, 

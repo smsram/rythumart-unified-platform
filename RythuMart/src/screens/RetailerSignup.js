@@ -10,7 +10,8 @@ import {
   ScrollView,
   Modal,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform // <--- Added Platform
 } from 'react-native';
 import axios from 'axios';
 import { API_URL } from '../config/api';
@@ -233,7 +234,12 @@ const RetailerSignup = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FFF',
+    // FIX: Push content down below status bar on Android
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 
+  },
   progressContainer: { height: 6, backgroundColor: '#F1F5F9', marginHorizontal: 20, marginTop: 20, borderRadius: 3 },
   progressBar: { height: 6, backgroundColor: '#2563EB', borderRadius: 3 },
   scrollContent: { padding: 24 },

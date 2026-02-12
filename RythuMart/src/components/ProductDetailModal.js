@@ -23,8 +23,10 @@ const ProductDetailModal = ({
   // Reset state when product changes
   useEffect(() => {
     if (product) {
-        setQty(product.quantity || 100);
-        setManualQty((product.quantity || 100).toString());
+        // Default to a reasonable bulk amount (e.g., 50kg) or available stock if less
+        const defaultQty = Math.min(product.quantity, 50); 
+        setQty(defaultQty);
+        setManualQty(defaultQty.toString());
     }
   }, [product]);
 
@@ -35,14 +37,17 @@ const ProductDetailModal = ({
     if (!isNaN(parsed)) setQty(parsed);
   };
 
-  const incrementQty = () => {
-    const newQty = qty + 1;
+  // Bulk Increment (Retailers buy in bulk)
+  const incrementQty = (amount = 10) => {
+    const newQty = qty + amount;
+    // Don't exceed available stock
+    if (product && newQty > product.quantity) return;
     setQty(newQty);
     setManualQty(newQty.toString());
   };
 
-  const decrementQty = () => {
-    const newQty = Math.max(1, qty - 1);
+  const decrementQty = (amount = 10) => {
+    const newQty = Math.max(1, qty - amount);
     setQty(newQty);
     setManualQty(newQty.toString());
   };
@@ -112,7 +117,8 @@ const ProductDetailModal = ({
                     </View>
                     <View style={{alignItems:'flex-end'}}>
                         <Text style={styles.priceHeader}>₹{product.price}</Text>
-                        <Text style={styles.unitHeader}>per {product.unit ? product.unit.replace('/','') : 'unit'}</Text>
+                        {/* UPDATED: Unit */}
+                        <Text style={styles.unitHeader}>per kg</Text>
                     </View>
                 </View>
 
@@ -171,23 +177,30 @@ const ProductDetailModal = ({
                     <View style={styles.mapStats}>
                         <View><Text style={styles.msLabel}>PICKUP READY</Text><Text style={styles.msVal}>2 Hours</Text></View>
                         <View><Text style={styles.msLabel}>TRANSPORT</Text><Text style={[styles.msVal, {color:'#2563EB'}]}>Van / Truck</Text></View>
-                        <View><Text style={styles.msLabel}>STOCK AVAIL.</Text><Text style={styles.msVal}>{product.quantity} {product.quantityUnit}</Text></View>
+                        {/* UPDATED: Unit */}
+                        <View><Text style={styles.msLabel}>STOCK AVAIL.</Text><Text style={styles.msVal}>{product.quantity} kg</Text></View>
                     </View>
                 </View>
 
                 {/* Quantity Setter */}
-                <Text style={styles.sectionLabel}>Set Quantity ({product.quantityUnit || 'Tons'})</Text>
+                {/* UPDATED: Unit */}
+                <Text style={styles.sectionLabel}>Set Quantity (kg)</Text>
                 <View style={styles.qtyContainer}>
                     <View style={styles.qtyControl}>
-                        <TouchableOpacity style={styles.qtyBtn} onPress={decrementQty}><Minus size={20} color="#000"/></TouchableOpacity>
+                        {/* -10 Button */}
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementQty(10)}><Minus size={20} color="#000"/></TouchableOpacity>
+                        
                         <TextInput 
                             value={manualQty} 
                             onChangeText={handleQtyChange} 
                             keyboardType="numeric"
                             style={styles.qtyInput} 
                         />
-                        <TouchableOpacity style={styles.qtyBtn} onPress={incrementQty}><Plus size={20} color="#000"/></TouchableOpacity>
+                        
+                        {/* +10 Button */}
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementQty(10)}><Plus size={20} color="#000"/></TouchableOpacity>
                     </View>
+                    
                     <View style={{alignItems:'flex-end'}}>
                         <Text style={styles.msLabel}>Total Cost</Text>
                         <Text style={{fontSize:18, fontWeight:'bold', color:'#16A34A'}}>₹{parseInt(totalPrice).toLocaleString()}</Text>

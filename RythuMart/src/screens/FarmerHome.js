@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { 
   View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, StatusBar, 
-  Dimensions, RefreshControl, ActivityIndicator, TextInput, Modal, FlatList, Alert 
+  Dimensions, RefreshControl, ActivityIndicator, TextInput, Modal, FlatList, Alert, Platform, SafeAreaView
 } from 'react-native';
 import { Mic, Camera, MapPin, Eye, Heart, Plus, Search, X } from 'lucide-react-native';
 import axios from 'axios';
@@ -43,7 +43,6 @@ const FarmerHome = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const filteredCrops = ALL_CROPS.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // --- FOCUS EFFECT (Reloads when screen active) ---
   useFocusEffect(
     useCallback(() => {
       const loadScreenData = async () => {
@@ -53,13 +52,11 @@ const FarmerHome = () => {
             const parsedUser = JSON.parse(storedUser);
             setUser(parsedUser);
             
-            // Parallel Fetch: Listings & Analysis for default crop
             await Promise.all([
                fetchCrops(parsedUser.id),
                fetchAnalysisData(selectedCrop) 
             ]);
             
-            // Background Profile Sync
             axios.get(`${API_URL}/profile/${parsedUser.id}`)
               .then(res => setUser(prev => ({ ...prev, ...res.data.user, id: parsedUser.id })))
               .catch(() => {});
@@ -85,12 +82,12 @@ const FarmerHome = () => {
     if (!cropName) return;
     setTrendLoading(true);
     try {
-        // 1. Get Live Price Base
         const marketRes = await axios.get(`${API_URL}/market/prices?limit=100`);
         const currentItem = marketRes.data.find(i => i.cropName === cropName);
-        const currentPrice = currentItem ? currentItem.price : 2000;
+        
+        // FIX: Default fallback is now 20 (kg price) not 2000 (ton price)
+        const currentPrice = currentItem ? currentItem.price : 20; 
 
-        // 2. Call Unified Backend Endpoint (Python)
         const response = await axios.post(`${API_URL}/market/analyze`, {
             cropName,
             currentPrice
@@ -103,20 +100,20 @@ const FarmerHome = () => {
 
     } catch (error) {
         console.log("Analysis fetch error, using fallbacks");
-        const base = 2000;
+        const base = 20; // FIX: Base price per KG
         
         // Mock History
         setHistoryData(Array.from({length: 7}, (_, i) => ({
             day: ['Mon','Tue','Wed','Thu','Fri','Sat','Today'][i],
             date: `Day -${6-i}`,
-            price: Math.floor(base + (i * 20) + (Math.random() * 50))
+            price: Math.floor(base + (i * 0.5) + (Math.random() * 2)) // Smaller fluctuations for KG
         })));
 
         // Mock Forecast
         setForecastData(Array.from({length: 7}, (_, i) => ({
             day: ['Tom','Tue','Wed','Thu','Fri','Sat','Sun'][i],
             date: `Day +${i+1}`,
-            price: Math.floor(base + 100 + (i * 30) + (Math.random() * 50))
+            price: Math.floor(base + 1 + (i * 0.5) + (Math.random() * 2))
         })));
     } finally {
         setTrendLoading(false);
@@ -135,8 +132,9 @@ const FarmerHome = () => {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#16A34A" /></View>;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+    <SafeAreaView style={styles.container}>
+      {/* Fix: Translucent StatusBar for better look, but padded in container */}
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
       
       {user && user.id && (
         <AddCropModal visible={modalVisible} onClose={() => setModalVisible(false)} onCropAdded={() => fetchCrops(user.id)} userId={user.id} />
@@ -173,31 +171,30 @@ const FarmerHome = () => {
         </View>
       </Modal>
 
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logoIcon}><Text style={styles.logoLeaf}>🍃</Text></View>
+          <Text style={styles.appName}>AgriFlow</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.locationChip}>
+            <MapPin size={14} color="#16A34A" />
+            <Text style={styles.locationText}>{user?.location || 'India'}</Text>
+          </View>
+          <Image source={{ uri: user?.profileImage || 'https://via.placeholder.com/100' }} style={styles.profilePic} />
+        </View>
+      </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIcon}><Text style={styles.logoLeaf}>🍃</Text></View>
-            <Text style={styles.appName}>AgriFlow</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <View style={styles.locationChip}>
-              <MapPin size={14} color="#16A34A" />
-              <Text style={styles.locationText}>{user?.location || 'India'}</Text>
-            </View>
-            <Image source={{ uri: user?.profileImage || 'https://via.placeholder.com/100' }} style={styles.profilePic} />
-          </View>
-        </View>
-
         <View style={styles.welcomeSection}>
           <Text style={styles.greeting}>Namaste, {user?.name || 'Farmer'}!</Text>
           <Text style={styles.subGreeting}>AI-Powered Price Analysis</Text>
         </View>
 
-        {/* --- PRICE PREDICTION COMPONENT --- */}
         <PricePredictionCard 
             selectedCrop={selectedCrop}
             weight={weight}
@@ -239,10 +236,10 @@ const FarmerHome = () => {
                   <View style={[styles.statusTag, { backgroundColor: crop.status === 'SOLD' ? '#E5E7EB' : '#DCFCE7' }]}>
                     <Text style={[styles.statusText, { color: crop.status === 'SOLD' ? '#6B7280' : '#16A34A' }]}>{crop.status || 'LIVE'}</Text>
                   </View>
-                  <Text style={styles.listingPrice}>₹{crop.price} <Text style={styles.unitText}>/q</Text></Text>
+                  <Text style={styles.listingPrice}>₹{crop.price} <Text style={styles.unitText}>/kg</Text></Text>
                 </View>
                 <Text style={styles.cropName}>{crop.name}</Text>
-                <Text style={styles.quantityText}>Qty: {crop.quantity} {crop.quantityUnit || 'Tons'}</Text>
+                <Text style={styles.quantityText}>Qty: {crop.quantity} {crop.quantityUnit || 'kg'}</Text>
                 <View style={styles.listingStats}>
                   <View style={styles.statItem}><Eye size={14} color="#9CA3AF" /><Text style={styles.statText}>{crop.views || 0} views</Text></View>
                   <View style={styles.statItem}><Heart size={14} color="#9CA3AF" /><Text style={styles.statText}>{crop.bids || 0} bids</Text></View>
@@ -257,14 +254,32 @@ const FarmerHome = () => {
         <Plus size={24} color="white" />
         <Text style={styles.fabText}>ADD CROP</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  // FIX: Using SafeAreaView + paddingTop for Android creates the perfect spacing
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff', // Header background color
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 
+  },
+  
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 20, backgroundColor: '#fff' },
+  
+  // Header styles updated to remove excessive padding since Container handles it
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingVertical: 15, // Reduced from 50+ to standard padding
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6'
+  },
+  
   logoContainer: { flexDirection: 'row', alignItems: 'center' },
   logoIcon: { width: 32, height: 32, backgroundColor: '#16A34A', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   logoLeaf: { fontSize: 18 },
@@ -273,7 +288,8 @@ const styles = StyleSheet.create({
   locationChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, marginRight: 10 },
   locationText: { fontSize: 12, color: '#15803D', fontWeight: '600', marginLeft: 4 },
   profilePic: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: '#DCFCE7' },
-  welcomeSection: { paddingHorizontal: 20, marginTop: 10, marginBottom: 20 },
+  
+  welcomeSection: { paddingHorizontal: 20, marginTop: 20, marginBottom: 20 },
   greeting: { fontSize: 22, fontWeight: 'bold', color: '#1F2937' },
   subGreeting: { fontSize: 14, color: '#6B7280', marginTop: 4 },
   

@@ -19,11 +19,13 @@ async function updateMarketPrices() {
     for (const record of records) {
       const cropName = record.commodity;
       const marketName = `${record.market}, ${record.state}`;
-      const currentPrice = parseFloat(record.modal_price);
       
-      // FIX: Agmarknet usually doesn't send a 'unit' field, it implies Quintal (100kg)
-      // If the API sends it, use it; otherwise default to "Quintal"
-      const unit = record.unit || "Quintal"; 
+      // FIX: Convert Price per Quintal (100kg) -> Price per KG
+      const rawPrice = parseFloat(record.modal_price);
+      const pricePerKg = rawPrice / 100; 
+
+      // Standardize Unit
+      const unit = "kg"; 
 
       const existing = await prisma.mandiPrice.findFirst({
         where: { cropName, marketName }
@@ -31,26 +33,26 @@ async function updateMarketPrices() {
 
       let trend = "stable";
       if (existing) {
-        if (currentPrice > existing.price) trend = "up";
-        else if (currentPrice < existing.price) trend = "down";
+        if (pricePerKg > existing.price) trend = "up";
+        else if (pricePerKg < existing.price) trend = "down";
 
         await prisma.mandiPrice.update({
           where: { id: existing.id },
-          data: { price: currentPrice, trend, unit, updatedAt: new Date() }
+          data: { price: pricePerKg, trend, unit, updatedAt: new Date() }
         });
       } else {
         await prisma.mandiPrice.create({
           data: {
             cropName,
             marketName,
-            price: currentPrice,
-            unit, // Save the unit
+            price: pricePerKg,
+            unit, 
             trend: "stable"
           }
         });
       }
     }
-    console.log("Market prices updated.");
+    console.log("Market prices updated (Converted to kg).");
   } catch (error) {
     console.error("Market Sync Error:", error.message);
   }

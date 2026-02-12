@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // <--- Added useRef
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -12,7 +12,7 @@ import {
   Dimensions,
   Keyboard
 } from 'react-native';
-import { X, UploadCloud, MapPin, Search, Crosshair } from 'lucide-react-native';
+import { X, UploadCloud, Search, Crosshair } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -24,7 +24,7 @@ const { width } = Dimensions.get('window');
 
 const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
   const [loading, setLoading] = useState(false);
-  const mapRef = useRef(null); // <--- Map Reference for Animation
+  const mapRef = useRef(null);
   
   // Form States
   const [name, setName] = useState('');
@@ -37,7 +37,7 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
   const [region, setRegion] = useState({
     latitude: 20.5937, // Default India Center
     longitude: 78.9629,
-    latitudeDelta: 15, // Zoomed out initially
+    latitudeDelta: 15,
     longitudeDelta: 15,
   });
   const [selectedCoords, setSelectedCoords] = useState(null);
@@ -71,7 +71,7 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
 
-      updateLocation(latitude, longitude, true); // True = Animate
+      updateLocation(latitude, longitude, true); 
     } catch (error) {
       console.log("Loc Error:", error);
     }
@@ -82,25 +82,21 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
     const newRegion = {
       latitude: lat,
       longitude: long,
-      latitudeDelta: 0.05, // Zoom in closer
+      latitudeDelta: 0.05, 
       longitudeDelta: 0.05,
     };
 
-    // Update State
     setRegion(newRegion);
     setSelectedCoords({ latitude: lat, longitude: long });
 
-    // *** ANIMATION MAGIC HERE ***
     if (animate && mapRef.current) {
-      mapRef.current.animateToRegion(newRegion, 1000); // 1000ms = 1 second smooth flight
+      mapRef.current.animateToRegion(newRegion, 1000);
     }
 
-    // Reverse Geocode (Get address name)
     try {
       let reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: long });
       if (reverseGeocode.length > 0) {
         const addr = reverseGeocode[0];
-        // Construct a clean address string
         const city = addr.city || addr.subregion || addr.region;
         const state = addr.region || addr.country;
         const formattedAddress = `${city}, ${state}`; 
@@ -114,13 +110,13 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
   // --- 3. Search Location ---
   const handleSearchLocation = async () => {
     if (!locationName) return;
-    Keyboard.dismiss(); // Close keyboard so we can see the map move
+    Keyboard.dismiss(); 
     
     try {
       const geocoded = await Location.geocodeAsync(locationName);
       if (geocoded.length > 0) {
         const { latitude, longitude } = geocoded[0];
-        updateLocation(latitude, longitude, true); // Trigger Animation
+        updateLocation(latitude, longitude, true); 
       } else {
         showAlert("Not Found", "Could not find that location. Try a major city name.");
       }
@@ -170,7 +166,7 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
         name,
         price: parseFloat(price),
         quantity: parseFloat(quantity),
-        quantityUnit: 'Tons',
+        quantityUnit: 'kg', // <--- CHANGED TO KG
         farmerId: userId,
         imageUrl: uploadRes.data.imageUrl,
         aiGrade: 'Grade A',
@@ -230,11 +226,13 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
 
               <View style={styles.row}>
                 <View style={{flex: 1, marginRight: 10}}>
-                  <Text style={styles.label}>Price (₹/Quintal)</Text>
+                  {/* Updated Label to KG */}
+                  <Text style={styles.label}>Price (₹/kg)</Text>
                   <TextInput style={styles.input} placeholder="0.00" keyboardType="numeric" value={price} onChangeText={setPrice} />
                 </View>
                 <View style={{flex: 1}}>
-                  <Text style={styles.label}>Quantity (Tons)</Text>
+                  {/* Updated Label to KG */}
+                  <Text style={styles.label}>Quantity (kg)</Text>
                   <TextInput style={styles.input} placeholder="0" keyboardType="numeric" value={quantity} onChangeText={setQuantity} />
                 </View>
               </View>
@@ -258,10 +256,10 @@ const AddCropModal = ({ visible, onClose, onCropAdded, userId }) => {
               {/* Map View */}
               <View style={styles.mapContainer}>
                 <MapView
-                  ref={mapRef} // <--- Attach Ref Here
+                  ref={mapRef}
                   style={styles.map}
                   provider={PROVIDER_DEFAULT}
-                  initialRegion={region} // Use initialRegion so we control updates via animateToRegion
+                  initialRegion={region}
                   onPress={(e) => updateLocation(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude, true)}
                 >
                   {selectedCoords && <Marker coordinate={selectedCoords} title="Farm Location" />}

@@ -3,14 +3,14 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// --- 1. CREATE OFFER (No changes needed here) ---
+// --- 1. CREATE OFFER ---
 router.post('/add', async (req, res) => {
   const { cropId, buyerId, offerPrice, quantity, totalAmount } = req.body;
   try {
     const newRequest = await prisma.buyerRequest.create({
       data: {
         cropId, buyerId, offerPrice: parseFloat(offerPrice), quantity: parseFloat(quantity),
-        message: `Offer: ₹${totalAmount} for ${quantity} tons.`,
+        message: `Offer: ₹${totalAmount} for ${quantity} kg.`, // Updated text to kg
         status: 'PENDING'
       }
     });
@@ -22,7 +22,7 @@ router.post('/add', async (req, res) => {
 
 // --- 2. FARMER RESPOND (UPDATED FOR PARTIAL SALES) ---
 router.put('/status/:requestId', async (req, res) => {
-  const { status } = req.body; // 'ACCEPTED' or 'REJECTED'
+  const { status } = req.body; 
   const { requestId } = req.params;
 
   try {
@@ -48,24 +48,21 @@ router.put('/status/:requestId', async (req, res) => {
         const requestedQty = request.quantity;
         const newQuantity = currentQty - requestedQty;
         
-        // 1. Validation: Ensure enough stock exists
+        // 1. Validation
         if (newQuantity < 0) {
-          throw new Error(`Insufficient stock. You only have ${currentQty} ${request.crop.quantityUnit} left.`);
+          throw new Error(`Insufficient stock. You only have ${currentQty} kg left.`);
         }
 
         // 2. Update Crop Inventory
-        // We only deduct quantity. Unit price remains the same.
         await tx.crop.update({
           where: { id: request.cropId },
           data: { 
             quantity: newQuantity,
-            // Only mark SOLD if strictly 0 left. Otherwise keep ACTIVE for other buyers.
             status: newQuantity <= 0 ? 'SOLD' : 'ACTIVE' 
           }
         });
 
         // 3. Create the Official Order 
-        // This makes it visible in Retailer's "My Orders" to mark Delivered later
         await tx.order.create({
           data: {
             displayId: `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -73,13 +70,13 @@ router.put('/status/:requestId', async (req, res) => {
             buyerId: request.buyerId,
             sellerId: request.crop.farmerId,
             quantity: requestedQty,
-            unit: request.crop.quantityUnit,
+            unit: "kg", // Standardized
             totalPrice: request.offerPrice * requestedQty,
-            status: 'CONFIRMED' // Retailer can change this to DELIVERED later
+            status: 'CONFIRMED' 
           }
         });
         
-        // 4. Clean up: If stock is 0, reject other PENDING requests for this crop
+        // 4. Clean up if out of stock
         if (newQuantity <= 0) {
              await tx.buyerRequest.updateMany({
                  where: { cropId: request.cropId, status: 'PENDING' },
@@ -122,7 +119,6 @@ router.get('/farmer/:farmerId', async (req, res) => {
 });
 
 // 4. GET REQUEST HISTORY (Accepted / Rejected)
-// UPDATED: Now fetches Order Status to see if deal is Completed/Cancelled
 router.get('/history/:farmerId', async (req, res) => {
   const { farmerId } = req.params;
   try {
@@ -138,16 +134,14 @@ router.get('/history/:farmerId', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Enhance requests with Order Status
     const enhancedRequests = await Promise.all(requests.map(async (req) => {
         if (req.status === 'ACCEPTED') {
-            // Find the order created from this request
             const order = await prisma.order.findFirst({
                 where: {
                     cropId: req.cropId,
                     buyerId: req.buyerId
                 },
-                select: { status: true } // e.g. 'DELIVERED', 'CANCELLED', 'CONFIRMED'
+                select: { status: true } 
             });
             return { ...req, orderStatus: order ? order.status : 'CONFIRMED' };
         }

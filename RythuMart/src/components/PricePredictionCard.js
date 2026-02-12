@@ -12,44 +12,43 @@ const PricePredictionCard = ({
   weight, 
   setWeight, 
   onOpenSearch, 
-  onPredict,     // Function to trigger analysis
+  onPredict,     
   loading, 
-  historyData,   // Past 7 Days
-  forecastData   // Next 7 Days
+  historyData,   
+  forecastData   
 }) => {
-  const [activeTab, setActiveTab] = useState('history'); // 'history' | 'forecast'
+  const [activeTab, setActiveTab] = useState('history'); 
   const [showResults, setShowResults] = useState(false);
-  const [focusedDayIndex, setFocusedDayIndex] = useState(6); // Default to latest
+  const [focusedDayIndex, setFocusedDayIndex] = useState(6); 
 
-  // Reset focus when tab or data changes
   useEffect(() => {
     const data = activeTab === 'history' ? historyData : forecastData;
     if (data && data.length > 0) {
-        // For history, focus on last day (Today). For forecast, focus on first day (Tomorrow).
         setFocusedDayIndex(activeTab === 'history' ? data.length - 1 : 0);
     }
   }, [activeTab, historyData, forecastData]);
 
   const handlePredictPress = () => {
     setShowResults(true);
-    // Switch to forecast immediately for "Predict" action feel
     setActiveTab('forecast'); 
     onPredict();
   };
 
-  // --- DATA HELPERS ---
   const currentData = activeTab === 'history' ? historyData : forecastData;
 
   const getSelectedDayPrice = () => {
     if (!currentData || currentData.length === 0) return 0;
     const data = currentData[focusedDayIndex];
-    return data ? Math.floor(data.price) : 0;
+    // Price is already per KG in the backend now
+    return data ? data.price : 0;
   };
 
   const getCalculatedTotal = () => {
-    const pricePer100Kg = getSelectedDayPrice();
+    const pricePerKg = getSelectedDayPrice();
     const userWeight = parseFloat(weight) || 0;
-    return Math.floor((pricePer100Kg / 100) * userWeight);
+    
+    // FIX: Simple multiplication since everything is in KG now
+    return Math.floor(pricePerKg * userWeight);
   };
 
   const getTrendInfo = () => {
@@ -58,7 +57,7 @@ const PricePredictionCard = ({
     const start = currentData[0].price;
     const end = currentData[currentData.length - 1].price;
     const diff = end - start;
-    const percent = ((diff / start) * 100).toFixed(1);
+    const percent = start !== 0 ? ((diff / start) * 100).toFixed(1) : 0;
 
     if (activeTab === 'history') {
         if (diff > 0) return { text: `Prices ROSE by ${percent}% this past week.`, isUp: true };
@@ -77,7 +76,6 @@ const PricePredictionCard = ({
   const allPrices = currentData?.map(d => d.price) || [];
   const localMax = allPrices.length ? Math.max(...allPrices) : 1;
   const localMin = allPrices.length ? Math.min(...allPrices) : 0;
-  // Create a visual floor so bars don't look empty
   const visualMin = localMin * 0.90; 
   const range = localMax - visualMin || 1;
 
@@ -130,7 +128,7 @@ const PricePredictionCard = ({
         </View>
       </View>
 
-      {/* --- PREDICT BUTTON (Show only if no results yet) --- */}
+      {/* --- PREDICT BUTTON --- */}
       {!showResults && !historyData.length && (
           <TouchableOpacity style={styles.predictBtn} onPress={handlePredictPress}>
               <Text style={styles.predictBtnText}>Analyze Market Trends</Text>
@@ -157,14 +155,14 @@ const PricePredictionCard = ({
                             <Text style={styles.unitPriceLabel}>
                                 {currentData[focusedDayIndex]?.day || 'Date'} Rate
                             </Text>
-                            <Text style={styles.unitPriceVal}>₹{getSelectedDayPrice().toLocaleString()}/q</Text>
+                            {/* FIX: Display unit as /kg */}
+                            <Text style={styles.unitPriceVal}>₹{getSelectedDayPrice().toFixed(1)}/kg</Text>
                         </View>
                     </View>
 
                     {/* Chart */}
                     <View style={styles.chartContainer}>
                         {currentData?.map((data, i) => {
-                            // Calculate height (Min 10px, Max 80px)
                             const normalized = (data.price - visualMin) / range;
                             const barHeight = 15 + (normalized * 85); 
                             const isFocused = i === focusedDayIndex;

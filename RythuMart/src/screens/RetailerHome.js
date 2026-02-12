@@ -91,7 +91,6 @@ const RetailerHome = () => {
             price: data.price
         });
         setAlertConfig({ visible: true, title: "Added to Cart", message: `${data.name} added successfully!` });
-        // Optionally close modal: setDetailVisible(false);
     } catch (err) {
         setAlertConfig({ visible: true, title: "Error", message: "Could not add to cart." });
     }
@@ -104,12 +103,12 @@ const RetailerHome = () => {
         return;
     }
     setCheckoutData(data);
-    setPaymentVisible(true); // Detail remains open behind this
+    setPaymentVisible(true); 
   };
 
   // 3. PAYMENT COMPLETED
   const onPaymentComplete = async (method) => {
-    setPaymentVisible(false); // Close Payment
+    setPaymentVisible(false); 
     
     try {
         await axios.post(`${API_URL}/requests/add`, {
@@ -120,7 +119,7 @@ const RetailerHome = () => {
             totalAmount: checkoutData.totalAmount
         });
         
-        setDetailVisible(false); // NOW close detail modal
+        setDetailVisible(false); 
         setAlertConfig({ 
             visible: true, 
             title: "Success!", 
@@ -175,7 +174,7 @@ const RetailerHome = () => {
         stickyHeaderIndices={[1]} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Search & Filter UI (Same as before) */}
+        {/* Search & Filter UI */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Search size={20} color="#9CA3AF" />
@@ -214,9 +213,14 @@ const RetailerHome = () => {
                     <View style={styles.cardContent}>
                         <Text style={styles.prodName} numberOfLines={1}>{item.name}</Text>
                         <Text style={styles.farmerName} numberOfLines={1}>{item.farmer?.name || "Verified Farmer"}</Text>
-                        <Text style={styles.price}>₹{item.price} <Text style={styles.unit}>{item.unit || '/q'}</Text></Text>
+                        
+                        {/* UPDATED: Unit */}
+                        <Text style={styles.price}>
+                            ₹{item.price} <Text style={styles.unit}>/kg</Text>
+                        </Text>
+                        
                         <TouchableOpacity style={styles.buyBtn} onPress={() => handleCardPress(item)}>
-                            <Text style={styles.buyBtnText}>Make Offer</Text>
+                            <Text style={styles.buyBtnText}>View Deal</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
@@ -228,7 +232,6 @@ const RetailerHome = () => {
   );
 };
 
-// ... (Styles same as previous)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 15 },

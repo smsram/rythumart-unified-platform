@@ -26,7 +26,7 @@ router.post('/add', async (req, res) => {
   try {
     const item = await prisma.cartItem.upsert({
       where: { buyerId_cropId: { buyerId, cropId } },
-      update: { quantity: { increment: parseFloat(quantity) } }, // Add to existing qty
+      update: { quantity: { increment: parseFloat(quantity) } }, 
       create: { buyerId, cropId, quantity: parseFloat(quantity), price: parseFloat(price) }
     });
     res.json(item);
@@ -59,9 +59,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 5. CHECKOUT (Convert Cart -> Orders/Requests)
+// 5. CHECKOUT (Convert Cart -> Buyer Requests)
 router.post('/checkout', async (req, res) => {
-  const { buyerId, items, paymentMethod } = req.body; // items = [{cartId, cropId, qty, price, total}]
+  const { buyerId, items, paymentMethod } = req.body; 
 
   try {
     const result = await prisma.$transaction(async (tx) => {

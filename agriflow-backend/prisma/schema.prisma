@@ -22,21 +22,21 @@ model User {
   location      String?  
   profileImage  String?
   language      String   @default("English") 
-  isVerified    Boolean  @default(false)     
+  isVerified    Boolean  @default(false)      
   
   // Rating System
   rating        Float    @default(5.0)
 
   // Farmer Specific Fields
   mainCrops     String?  
-  lifetimeEarnings Float @default(0.0)       
+  lifetimeEarnings Float @default(0.0)        
   bankAccount   String?                     
   landSize      String?                     
 
   // Retailer Specific Fields
   businessName  String?                     
   gstNumber     String?                     
-  totalSpent    Float    @default(0.0)       
+  totalSpent    Float    @default(0.0)        
   
   // Relations
   crops         Crop[]         @relation("FarmerCrops")
@@ -65,10 +65,10 @@ model Crop {
   description   String?
   category      String?  
   imageUrl      String?  
-  price         Float    
-  unit          String   
-  quantity      Float    
-  quantityUnit  String   
+  price         Float    // Price per kg
+  unit          String   @default("kg") // Standardized to kg
+  quantity      Float    // Total available quantity in kg
+  quantityUnit  String   @default("kg") // Standardized to kg
 
   // --- NEW LOCATION FIELDS ---
   location      String?  // e.g. "Guntur, AP"
@@ -86,7 +86,6 @@ model Crop {
   orders        Order[]
   requests      BuyerRequest[] 
 
-  // Items in Carts - FIXED: Added this line
   cartItems     CartItem[]     
 
   createdAt     DateTime @default(now())
@@ -106,7 +105,7 @@ model BuyerRequest {
   
   // Offer Details
   offerPrice    Float    
-  quantity      Float    
+  quantity      Float    // In kg
   message       String?  
   
   status        RequestStatus @default(PENDING)
@@ -119,8 +118,8 @@ model Order {
   displayId     String      
   
   // Order Details
-  quantity      Float       
-  unit          String      
+  quantity      Float       // In kg
+  unit          String      @default("kg") // Standardized to kg
   totalPrice    Float       
   status        OrderStatus @default(PENDING) 
 
@@ -143,31 +142,31 @@ model MandiPrice {
   id            String   @id @default(uuid())
   cropName      String   
   marketName    String   
-  price         Float    
-  unit          String   
+  price         Float    // Stored as Price per kg
+  unit          String   @default("kg") // Standardized to kg
   trend         String   
   updatedAt     DateTime @updatedAt
 }
 
 // --- 6. ADDRESS MANAGEMENT ---
 model Address {
-  id          String   @id @default(uuid())
+  id            String   @id @default(uuid())
   
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
   
-  label       String   // e.g., "Main Warehouse", "Market Stall 1"
+  label         String   // e.g., "Main Warehouse", "Market Stall 1"
   addressLine String   // e.g., "12-4-1, Guntur Market Yard"
-  city        String?
-  state       String?
-  zipCode     String?
+  city          String?
+  state         String?
+  zipCode       String?
   
-  latitude    Float?
-  longitude   Float?
+  latitude      Float?
+  longitude     Float?
   
-  isDefault   Boolean  @default(false)
+  isDefault     Boolean  @default(false)
   
-  createdAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 // --- 7. SHOPPING CART ---
@@ -180,29 +179,29 @@ model CartItem {
   cropId    String
   crop      Crop     @relation(fields: [cropId], references: [id])
   
-  quantity  Float    // Quantity selected by retailer
-  price     Float    // Price at the time of adding (or current price)
+  quantity  Float    // Quantity selected in kg
+  price     Float    // Price per kg at time of adding
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([buyerId, cropId]) // Prevent duplicates of same item in cart
+  @@unique([buyerId, cropId]) 
 }
 
 // --- 8. REVIEWS (NEW) ---
 model Review {
-  id          String   @id @default(uuid())
+  id            String   @id @default(uuid())
   
-  rating      Int      // 1 to 5
-  comment     String?
+  rating        Int      // 1 to 5
+  comment       String?
   
-  reviewerId  String
-  reviewer    User     @relation("ReviewsWritten", fields: [reviewerId], references: [id])
+  reviewerId    String
+  reviewer      User     @relation("ReviewsWritten", fields: [reviewerId], references: [id])
   
-  targetId    String   // The Farmer being rated
-  target      User     @relation("ReviewsReceived", fields: [targetId], references: [id])
+  targetId      String   // The Farmer being rated
+  target        User     @relation("ReviewsReceived", fields: [targetId], references: [id])
   
-  createdAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 // --- ENUMS ---

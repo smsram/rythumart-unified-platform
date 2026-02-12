@@ -54,9 +54,29 @@ const RetailerProfile = ({ navigation }) => {
       const userData = await AsyncStorage.getItem('userData');
       if (userData) {
         const parsedUser = JSON.parse(userData);
-        const res = await axios.get(`${API_URL}/profile/${parsedUser.id}`);
-        setProfile(res.data.user);
-        setStats({ totalSpent: res.data.stats?.total || 0, orderCount: res.data.stats?.month || 0 });
+        
+        // Parallel Fetch: Profile + Orders to calc spent
+        const [profileRes, ordersRes] = await Promise.all([
+            axios.get(`${API_URL}/profile/${parsedUser.id}`),
+            axios.get(`${API_URL}/orders/buyer/${parsedUser.id}`)
+        ]);
+
+        setProfile(profileRes.data.user);
+        
+        // CALCULATE TOTAL SPENT MANUALLY FROM ORDERS
+        const orders = ordersRes.data || [];
+        const totalSpent = orders.reduce((sum, order) => {
+            // Only count if confirmed/delivered to be accurate
+            if (['CONFIRMED', 'DELIVERED', 'IN_TRANSIT'].includes(order.status)) {
+                return sum + (order.totalPrice || 0);
+            }
+            return sum;
+        }, 0);
+
+        setStats({ 
+            totalSpent: totalSpent, 
+            orderCount: orders.length 
+        });
         
         // Fetch Addresses
         fetchAddresses(parsedUser.id);
@@ -196,10 +216,23 @@ const RetailerProfile = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <View style={styles.divider} />
+          
+          {/* UPDATED: Dynamic Stats */}
           <View style={styles.statsRow}>
-            <View style={styles.statItem}><Text style={styles.statLabel}>TOTAL SPENT</Text><Text style={styles.statValue}>₹{(stats.totalSpent/1000).toFixed(1)}k</Text></View>
+            <View style={styles.statItem}>
+                <Text style={styles.statLabel}>TOTAL SPENT</Text>
+                {/* Divide by 1000 for 'k' display if > 1000 */}
+                <Text style={styles.statValue}>
+                    {stats.totalSpent > 1000 
+                        ? `₹${(stats.totalSpent/1000).toFixed(1)}k` 
+                        : `₹${stats.totalSpent.toLocaleString()}`}
+                </Text>
+            </View>
             <View style={styles.verticalLine} />
-            <View style={styles.statItem}><Text style={styles.statLabel}>ORDERS</Text><Text style={styles.statValue}>{stats.orderCount}</Text></View>
+            <View style={styles.statItem}>
+                <Text style={styles.statLabel}>ORDERS</Text>
+                <Text style={styles.statValue}>{stats.orderCount}</Text>
+            </View>
           </View>
         </View>
 

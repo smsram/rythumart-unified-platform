@@ -13,7 +13,7 @@ router.get('/buyer/:buyerId', async (req, res) => {
       include: {
         crop: {
           include: {
-            farmer: { // Get Farmer Details (Seller)
+            farmer: { 
               select: { name: true, phone: true, location: true }
             }
           }
@@ -28,7 +28,7 @@ router.get('/buyer/:buyerId', async (req, res) => {
   }
 });
 
-// 2. UPDATE ORDER STATUS (e.g. Mark as DELIVERED or CANCELLED)
+// 2. UPDATE ORDER STATUS
 router.put('/:orderId/status', async (req, res) => {
   const { status } = req.body; // Expecting 'DELIVERED' or 'CANCELLED'
   const { orderId } = req.params;

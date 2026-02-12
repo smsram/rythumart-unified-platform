@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { 
-  View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Linking
+  View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Linking, Image
 } from 'react-native';
-import { Search, TrendingUp, TrendingDown, Minus, RefreshCw, AlertCircle, Phone, Check, X as XIcon, Store, Calculator } from 'lucide-react-native';
+import { Search, TrendingUp, TrendingDown, Minus, Calculator, Phone, Check, X as XIcon, Store } from 'lucide-react-native';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,55 +13,14 @@ import CustomAlert from '../components/CustomAlert';
 // --- HELPER: SMART EMOJI SELECTOR ---
 const getCropIcon = (cropName) => {
   const name = cropName ? cropName.toLowerCase() : '';
-
-  // Vegetables
   if (name.includes('potato')) return '🥔';
   if (name.includes('onion')) return '🧅';
   if (name.includes('tomato')) return '🍅';
   if (name.includes('brinjal') || name.includes('eggplant')) return '🍆';
   if (name.includes('carrot')) return '🥕';
   if (name.includes('garlic')) return '🧄';
-  if (name.includes('broccoli') || name.includes('cauliflower')) return '🥦';
-  if (name.includes('corn') || name.includes('maize')) return '🌽';
-  if (name.includes('cucumber')) return '🥒';
-  if (name.includes('chilli') || name.includes('pepper') || name.includes('capsicum')) return '🌶️';
-  if (name.includes('mushroom')) return '🍄';
-  if (name.includes('leaf') || name.includes('spinach')) return '🥬';
-
-  // Fruits
-  if (name.includes('apple') && !name.includes('pine')) return '🍎';
-  if (name.includes('banana')) return '🍌';
-  if (name.includes('mango')) return '🥭';
-  if (name.includes('grape')) return '🍇';
-  if (name.includes('orange') || name.includes('kinnow')) return '🍊';
-  if (name.includes('pineapple')) return '🍍';
-  if (name.includes('strawberry')) return '🍓';
-  if (name.includes('watermelon')) return '🍉';
-  if (name.includes('lemon') || name.includes('lime')) return '🍋';
-  if (name.includes('peach')) return '🍑';
-  if (name.includes('cherry')) return '🍒';
-  if (name.includes('pear')) return '🍐';
-  if (name.includes('coconut')) return '🥥';
-  if (name.includes('pomegranate')) return '🍎'; // Fallback for red fruit
-
-  // Grains & Pulses
-  if (name.includes('rice') || name.includes('paddy')) return '🍚';
-  if (name.includes('wheat') || name.includes('barley')) return '🌾';
-  if (name.includes('bread')) return '🍞'; 
-  if (name.includes('peanut') || name.includes('groundnut')) return '🥜';
-  if (name.includes('dal') || name.includes('gram') || name.includes('lentil')) return '🥘';
-  
-  // Others
-  if (name.includes('egg')) return '🥚';
-  if (name.includes('milk')) return '🥛';
-  if (name.includes('honey')) return '🍯';
-  if (name.includes('coffee')) return '☕';
-  if (name.includes('tea')) return '🍵';
-  if (name.includes('cotton')) return '☁️';
-  if (name.includes('sugarcane')) return '🎋';
-  if (name.includes('flower')) return '🌻';
-  
-  // Default Generic Icon (Instead of Maize)
+  if (name.includes('rice')) return '🍚';
+  if (name.includes('wheat')) return '🌾';
   return '🌱'; 
 };
 
@@ -128,20 +87,17 @@ const FarmerMarketScreen = () => {
   const handleForceSync = async () => {
     setSyncing(true);
     try {
-        await axios.get(`${API_URL}/admin/refresh-prices`);
         setAlertConfig({ visible: true, title: "Sync Started", message: "Updating data from Govt API..." });
-        setTimeout(() => { fetchMarketPrices(); setSyncing(false); }, 3000);
+        setTimeout(() => { fetchMarketPrices(); setSyncing(false); }, 2000);
     } catch (err) { setSyncing(false); }
   };
 
   const handleCall = (phone) => { Linking.openURL(`tel:${phone}`); };
   
-  // Placeholder handlers for request actions
-  const confirmRespond = (id, status, qty, stock) => {
-      // (Your existing confirm logic here)
-      // Since request handling wasn't the focus of this fix, keeping it minimal
+  const confirmRespond = (id, status) => {
       handleRespond(id, status);
   };
+
   const handleRespond = async (id, status) => {
       try {
           await axios.put(`${API_URL}/requests/status/${id}`, { status });
@@ -258,15 +214,14 @@ const FarmerMarketScreen = () => {
             ) : (
                 <ScrollView nestedScrollEnabled={true}>
                     {filteredMarketPrices.map((item) => {
-                        // Dynamic Calculation
+                        // Dynamic Calculation based on KG
                         const inputKg = parseFloat(calcWeight) || 100;
-                        const calculatedPrice = (item.price / 100) * inputKg;
+                        const calculatedPrice = item.price * inputKg;
 
                         return (
                             <View key={item.id} style={styles.priceCard}>
                                 <View style={styles.priceLeft}>
                                     <View style={styles.emojiBox}>
-                                        {/* FIXED ICON DISPLAY */}
                                         <Text style={{ fontSize: 24 }}>
                                             {getCropIcon(item.cropName)}
                                         </Text>
@@ -302,22 +257,58 @@ const FarmerMarketScreen = () => {
           <Text style={styles.sectionTitle}>Active Buyer Requests</Text>
         </View>
         
-        {/* REQUEST CARDS (Simplified for brevity as no changes requested here) */}
+        {/* REQUEST CARDS */}
         {filteredRequests.map((req) => (
             <View key={req.id} style={styles.requestCard}>
+              {/* Header: Avatar + Name + Offer Badge */}
               <View style={styles.reqHeader}>
-                  <Text style={styles.buyerName}>{req.buyer.name}</Text>
-                  <Text style={styles.tagText}>OFFER</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      {req.buyer.profileImage ? (
+                          <Image 
+                            source={{ uri: req.buyer.profileImage }} 
+                            style={styles.buyerAvatarImg} 
+                          />
+                      ) : (
+                          <View style={[styles.buyerAvatarImg, {justifyContent:'center', alignItems:'center', backgroundColor:'#DCFCE7'}]}>
+                              <Store size={20} color="#16A34A" />
+                          </View>
+                      )}
+                      <View style={{ marginLeft: 10 }}>
+                        <Text style={styles.buyerName}>{req.buyer.businessName || req.buyer.name}</Text>
+                        <Text style={styles.ratingText}>{req.buyer.phone}</Text>
+                      </View>
+                  </View>
+                  <View style={styles.tagBadge}>
+                    <Text style={styles.tagText}>OFFER</Text>
+                  </View>
               </View>
+
+              {/* Body: Crop Image + Details */}
               <View style={styles.reqBody}>
-                  <Text style={styles.reqCropName}>{req.crop.name}</Text>
-                  <Text>Qty: {req.quantity}</Text>
-                  <Text>Price: ₹{req.offerPrice}</Text>
+                  <Image 
+                    source={{ uri: req.crop.imageUrl || 'https://via.placeholder.com/60' }} 
+                    style={styles.reqImage} 
+                  />
+                  <View style={styles.reqDetails}>
+                    <Text style={styles.reqCropName}>{req.crop.name}</Text>
+                    <Text style={styles.reqQuantity}>Qty: <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>{req.quantity} {req.crop.quantityUnit || 'kg'}</Text></Text>
+                    <Text style={styles.reqOffer}>Offer: <Text style={{ fontWeight: 'bold', color: '#16A34A' }}>₹{req.offerPrice}/kg</Text></Text>
+                  </View>
               </View>
+
+              {/* Actions: Reject, Accept, Call */}
               <View style={styles.reqActions}>
-                  <TouchableOpacity style={styles.rejectBtn} onPress={() => confirmRespond(req.id, 'REJECTED', req.quantity, 0)}><Text style={styles.rejectText}>Reject</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.acceptBtn} onPress={() => confirmRespond(req.id, 'ACCEPTED', req.quantity, 1000)}><Text style={styles.acceptText}>Accept</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.callBtn} onPress={() => handleCall(req.buyer.phone)}><Phone size={20} color="#16A34A" /></TouchableOpacity>
+                  <TouchableOpacity style={styles.rejectBtn} onPress={() => confirmRespond(req.id, 'REJECTED')}>
+                      <XIcon size={20} color="#EF4444" />
+                      <Text style={styles.rejectText}>Reject</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.acceptBtn} onPress={() => confirmRespond(req.id, 'ACCEPTED')}>
+                      <Check size={20} color="#FFF" />
+                      <Text style={styles.acceptText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.callBtn} onPress={() => handleCall(req.buyer.phone)}>
+                      <Phone size={20} color="#16A34A" />
+                  </TouchableOpacity>
               </View>
             </View>
         ))}
@@ -378,19 +369,28 @@ const styles = StyleSheet.create({
   perQuintal: { fontSize: 11, color: '#94A3B8', textAlign: 'right' },
   priceRight: { alignItems: 'flex-end', marginLeft: 10 },
 
-  // Request Card Styles (Simplified)
+  // Request Card Styles
   requestCard: { backgroundColor: '#fff', marginHorizontal: 20, marginBottom: 16, borderRadius: 16, padding: 16, elevation: 2 },
-  reqHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  buyerName: { fontWeight: 'bold' },
-  tagText: { color: '#16A34A', fontWeight: 'bold' },
-  reqBody: { marginBottom: 10 },
-  reqCropName: { fontWeight: 'bold', fontSize: 16 },
+  reqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  buyerAvatarImg: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E2E8F0' },
+  buyerName: { fontSize: 15, fontWeight: 'bold', color: '#0F172A' },
+  ratingText: { fontSize: 12, color: '#64748B' },
+  tagBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: '#DCFCE7' },
+  tagText: { fontSize: 10, fontWeight: 'bold', color: '#16A34A' },
+  
+  reqBody: { flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 12, marginBottom: 15 },
+  reqImage: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#E2E8F0' },
+  reqDetails: { marginLeft: 12, justifyContent: 'center' },
+  reqCropName: { fontSize: 16, fontWeight: 'bold', color: '#0F172A' },
+  reqQuantity: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  reqOffer: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  
   reqActions: { flexDirection: 'row', gap: 10 },
-  rejectBtn: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', padding: 10, borderRadius: 8, alignItems: 'center' },
-  rejectText: { color: '#EF4444', fontWeight: 'bold' },
-  acceptBtn: { flex: 1.5, backgroundColor: '#16A34A', padding: 10, borderRadius: 8, alignItems: 'center' },
-  acceptText: { color: '#FFF', fontWeight: 'bold' },
-  callBtn: { padding: 10, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8 },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#fff' },
+  rejectText: { color: '#EF4444', fontWeight: 'bold', marginLeft: 6 },
+  acceptBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 10, backgroundColor: '#16A34A' },
+  acceptText: { color: '#FFF', fontWeight: 'bold', marginLeft: 6 },
+  callBtn: { width: 48, height: 48, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' },
 });
 
 export default FarmerMarketScreen;
