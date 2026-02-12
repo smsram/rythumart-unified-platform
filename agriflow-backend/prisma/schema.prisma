@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --- 1. UNIFIED USER MODEL (FARMER & RETAILER) ---
+model User {
+  id            String   @id @default(uuid())
+  
+  // Core Auth
+  role          Role     @default(FARMER)
+  name          String
+  phone         String   @unique
+  email         String?
+  password      String
+  
+  // Profile Details
+  location      String?  
+  profileImage  String?
+  language      String   @default("English") 
+  isVerified    Boolean  @default(false)     
+  
+  // Rating System (New)
+  rating        Float    @default(5.0)
+
+  // Farmer Specific Fields
+  mainCrops     String?  
+  lifetimeEarnings Float @default(0.0)       
+  bankAccount   String?                     
+  landSize      String?                     
+
+  // Retailer Specific Fields
+  businessName  String?                     
+  gstNumber     String?                     
+  totalSpent    Float    @default(0.0)       
+  
+  // Relations
+  crops         Crop[]         @relation("FarmerCrops")
+  orders        Order[]        @relation("BuyerOrders")
+  
+  // Requests made by this user (if they are a retailer buying something)
+  requestsMade  BuyerRequest[] @relation("BuyerRequests") 
+  
+  createdAt     DateTime @default(now())
+}
+
+// --- 2. CROP LISTINGS (MARKETPLACE) ---
+model Crop {
+  id            String   @id @default(uuid())
+  name          String   
+  description   String?
+  category      String?  
+  imageUrl      String?  
+  price         Float    
+  unit          String   
+  quantity      Float    
+  quantityUnit  String   
+
+  // --- NEW LOCATION FIELDS ---
+  location      String?  // e.g. "Guntur, AP"
+  latitude      Float?
+  longitude     Float?
+
+  aiGrade       String?  
+  qualityScore  Int?    
+  views         Int      @default(0) 
+  bids          Int      @default(0) 
+  status        CropStatus @default(ACTIVE) 
+
+  farmerId      String
+  farmer        User     @relation("FarmerCrops", fields: [farmerId], references: [id])
+  orders        Order[]
+  requests      BuyerRequest[] 
+
+  createdAt     DateTime @default(now())
+}
+
+// --- 3. BUYER REQUESTS (OFFERS / NEGOTIATIONS) ---
+model BuyerRequest {
+  id            String   @id @default(uuid())
+  
+  // Relation to the specific Crop being requested
+  cropId        String
+  crop          Crop     @relation(fields: [cropId], references: [id])
+  
+  // Relation to the Buyer (Retailer)
+  buyerId       String
+  buyer         User     @relation("BuyerRequests", fields: [buyerId], references: [id])
+  
+  // Offer Details
+  offerPrice    Float    
+  quantity      Float    
+  message       String?  
+  
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+}
+
+// --- 4. ORDERS (TRANSACTIONS) ---
+model Order {
+  id            String      @id @default(uuid())
+  displayId     String      
+  
+  // Order Details
+  quantity      Float       
+  unit          String      
+  totalPrice    Float       
+  status        OrderStatus @default(PENDING) 
+
+  // Relations
+  cropId        String
+  crop          Crop        @relation(fields: [cropId], references: [id])
+  
+  buyerId       String
+  buyer         User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  
+  // Seller info is accessed via crop.farmerId, but stored for easier queries
+  sellerId      String 
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// --- 5. MANDI PRICES (For "Market Rates" Screen) ---
+model MandiPrice {
+  id            String   @id @default(uuid())
+  cropName      String   
+  marketName    String   
+  price         Float    
+  unit          String   
+  trend         String   
+  updatedAt     DateTime @updatedAt
+}
+
+// --- ENUMS ---
+enum Role {
+  FARMER
+  RETAILER
+}
+
+enum CropStatus {
+  ACTIVE 
+  SOLD   
+  DRAFT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED 
+  IN_TRANSIT 
+  DELIVERED
+  CANCELLED
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
