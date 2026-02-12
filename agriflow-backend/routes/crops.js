@@ -63,6 +63,7 @@ router.get('/farmer/:id', async (req, res) => {
 });
 
 // --- GET MARKETPLACE LISTINGS (For Retailer Home) ---
+// GET MARKETPLACE LISTINGS
 router.get('/market', async (req, res) => {
   try {
     const crops = await prisma.crop.findMany({
@@ -71,14 +72,14 @@ router.get('/market', async (req, res) => {
       },
       include: { 
         farmer: { 
-          // We only need specific details, not the password!
           select: { 
             id: true,
             name: true, 
             location: true, 
             phone: true, 
             isVerified: true,
-            rating: true 
+            rating: true,
+            profileImage: true // <--- ADDED: This fixes the missing image issue
           } 
         } 
       }, 

@@ -24,7 +24,7 @@ model User {
   language      String   @default("English") 
   isVerified    Boolean  @default(false)     
   
-  // Rating System (New)
+  // Rating System
   rating        Float    @default(5.0)
 
   // Farmer Specific Fields
@@ -44,7 +44,17 @@ model User {
   
   // Requests made by this user (if they are a retailer buying something)
   requestsMade  BuyerRequest[] @relation("BuyerRequests") 
-  
+
+  // Address Management (Retailer Multiple Addresses)
+  addresses     Address[]      
+
+  // Shopping Cart (Retailer)
+  cartItems     CartItem[]     
+
+  // --- REVIEWS (NEW) ---
+  reviewsWritten  Review[] @relation("ReviewsWritten")
+  reviewsReceived Review[] @relation("ReviewsReceived")
+
   createdAt     DateTime @default(now())
 }
 
@@ -75,6 +85,9 @@ model Crop {
   farmer        User     @relation("FarmerCrops", fields: [farmerId], references: [id])
   orders        Order[]
   requests      BuyerRequest[] 
+
+  // Items in Carts - FIXED: Added this line
+  cartItems     CartItem[]     
 
   createdAt     DateTime @default(now())
 }
@@ -134,6 +147,62 @@ model MandiPrice {
   unit          String   
   trend         String   
   updatedAt     DateTime @updatedAt
+}
+
+// --- 6. ADDRESS MANAGEMENT ---
+model Address {
+  id          String   @id @default(uuid())
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  label       String   // e.g., "Main Warehouse", "Market Stall 1"
+  addressLine String   // e.g., "12-4-1, Guntur Market Yard"
+  city        String?
+  state       String?
+  zipCode     String?
+  
+  latitude    Float?
+  longitude   Float?
+  
+  isDefault   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+}
+
+// --- 7. SHOPPING CART ---
+model CartItem {
+  id        String   @id @default(uuid())
+  
+  buyerId   String
+  buyer     User     @relation(fields: [buyerId], references: [id])
+  
+  cropId    String
+  crop      Crop     @relation(fields: [cropId], references: [id])
+  
+  quantity  Float    // Quantity selected by retailer
+  price     Float    // Price at the time of adding (or current price)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([buyerId, cropId]) // Prevent duplicates of same item in cart
+}
+
+// --- 8. REVIEWS (NEW) ---
+model Review {
+  id          String   @id @default(uuid())
+  
+  rating      Int      // 1 to 5
+  comment     String?
+  
+  reviewerId  String
+  reviewer    User     @relation("ReviewsWritten", fields: [reviewerId], references: [id])
+  
+  targetId    String   // The Farmer being rated
+  target      User     @relation("ReviewsReceived", fields: [targetId], references: [id])
+  
+  createdAt   DateTime @default(now())
 }
 
 // --- ENUMS ---
