@@ -1,8 +1,10 @@
+import 'react-native-gesture-handler'; // <--- 1. MUST BE AT THE VERY TOP
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, ActivityIndicator } from 'react-native';
+import { StatusBar, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler'; // <--- 2. Import Root View
 
 // --- IMPORT SCREENS ---
 import StartScreen from './src/screens/StartScreen';
@@ -47,33 +49,48 @@ export default function App() {
   // --- SHOW LOADING SCREEN WHILE CHECKING ---
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#16A34A" />
       </View>
     );
   }
 
+  // --- 3. WRAP APP IN GestureHandlerRootView ---
   return (
-    <NavigationContainer>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      
-      <Stack.Navigator 
-        initialRouteName={initialRoute} // <--- Dynamic Start Screen
-        screenOptions={{ headerShown: false, cardStyle: { backgroundColor: '#F8FAFC' } }}
-      >
-        {/* 1. Onboarding Screens */}
-        <Stack.Screen name="StartScreen" component={StartScreen} />
-        <Stack.Screen name="LoginScreen" component={LoginScreen} />
-        <Stack.Screen name="FarmerSignup" component={FarmerSignup} />
-        <Stack.Screen name="RetailerSignup" component={RetailerSignup} />
+    <GestureHandlerRootView style={styles.container}>
+      <NavigationContainer>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
         
-        {/* 2. Farmer Dashboard */}
-        <Stack.Screen name="FarmerHome" component={FarmerTabs} />
-        
-        {/* 3. Retailer Dashboard */}
-        <Stack.Screen name="RetailerHome" component={RetailerTabs} />
+        <Stack.Navigator 
+          initialRouteName={initialRoute} 
+          screenOptions={{ headerShown: false, cardStyle: { backgroundColor: '#F8FAFC' } }}
+        >
+          {/* 1. Onboarding Screens */}
+          <Stack.Screen name="StartScreen" component={StartScreen} />
+          <Stack.Screen name="LoginScreen" component={LoginScreen} />
+          <Stack.Screen name="FarmerSignup" component={FarmerSignup} />
+          <Stack.Screen name="RetailerSignup" component={RetailerSignup} />
+          
+          {/* 2. Farmer Dashboard */}
+          <Stack.Screen name="FarmerHome" component={FarmerTabs} />
+          
+          {/* 3. Retailer Dashboard */}
+          <Stack.Screen name="RetailerHome" component={RetailerTabs} />
 
-      </Stack.Navigator>
-    </NavigationContainer>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF'
+  }
+});

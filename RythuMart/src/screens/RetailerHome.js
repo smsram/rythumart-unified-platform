@@ -1,39 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, 
-  Text, 
-  TextInput, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  StyleSheet, 
-  StatusBar,
-  Dimensions,
-  ActivityIndicator,
-  RefreshControl,
-  Linking,
-  Modal,
-  KeyboardAvoidingView,
-  Platform
+  View, Text, TextInput, ScrollView, TouchableOpacity, Image, StyleSheet, 
+  StatusBar, Dimensions, ActivityIndicator, RefreshControl, Linking, Modal, 
+  KeyboardAvoidingView, Platform 
 } from 'react-native';
-import { 
-  Search, 
-  Bell, 
-  SlidersHorizontal, 
-  Phone, 
-  CheckCircle,
-  X
-} from 'lucide-react-native';
+import { Search, Bell, SlidersHorizontal, Phone, CheckCircle, X } from 'lucide-react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
 
 import { API_URL } from '../config/api';
 import CustomAlert from '../components/CustomAlert';
+import ProductDetailModal from '../components/ProductDetailModal';
+import PaymentModal from '../components/PaymentModal';
 
 const { width } = Dimensions.get('window');
-
-// --- GRID CALCULATION ---
 const CONTAINER_PADDING = 20;
 const GAP = 15;
 const CARD_WIDTH = (width - (CONTAINER_PADDING * 2) - GAP) / 2;
@@ -45,22 +25,18 @@ const RetailerHome = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   
-  // Search & Filter State
+  // Modals
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [paymentVisible, setPaymentVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [checkoutData, setCheckoutData] = useState(null); 
+
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-
-  // Offer Modal State
-  const [offerModalVisible, setOfferModalVisible] = useState(false);
-  const [selectedCrop, setSelectedCrop] = useState(null);
-  const [offerPrice, setOfferPrice] = useState('');
-  const [offerLoading, setOfferLoading] = useState(false);
-
-  // Custom Alert State
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '' });
 
   const filters = ['All', 'Vegetables', 'Fruits', 'Grains', 'Spices'];
 
-  // --- 1. Load User & Data ---
   useEffect(() => {
     loadUser();
     fetchMarketData();
@@ -75,97 +51,90 @@ const RetailerHome = () => {
     try {
       const response = await axios.get(`${API_URL}/crops/market`);
       setProducts(response.data);
-      setFilteredProducts(response.data); // Initialize filtered list
-    } catch (error) {
-      console.error("Market Fetch Error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      setFilteredProducts(response.data);
+    } catch (error) { console.error(error); } 
+    finally { setLoading(false); setRefreshing(false); }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchMarketData();
-  };
+  const onRefresh = () => { setRefreshing(true); fetchMarketData(); };
 
-  // --- 2. Filter Logic ---
   useEffect(() => {
     let result = products;
-
-    // Filter by Category
     if (activeFilter !== 'All') {
-       // Note: Ensure your backend returns 'category' or match against name/tags
-       // For now, doing a loose text match if category field is empty
-       result = result.filter(p => 
-          (p.category && p.category === activeFilter) || 
-          p.name.toLowerCase().includes(activeFilter.toLowerCase())
-       );
+       result = result.filter(p => (p.category === activeFilter) || p.name.includes(activeFilter));
     }
-
-    // Filter by Search
     if (searchText) {
-      const lowerText = searchText.toLowerCase();
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(lowerText) || 
-        (p.farmer?.name || '').toLowerCase().includes(lowerText) ||
-        (p.farmer?.location || '').toLowerCase().includes(lowerText)
-      );
+      const lower = searchText.toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(lower) || p.farmer?.name?.toLowerCase().includes(lower));
     }
-
     setFilteredProducts(result);
   }, [searchText, activeFilter, products]);
 
-  // --- 3. Actions ---
-  
-  // Open Offer Modal
-  const openOfferModal = (item) => {
-    if (!user) {
-        setAlertConfig({ visible: true, title: "Login Required", message: "Please login to make offers." });
-        return;
-    }
-    setSelectedCrop(item);
-    setOfferPrice(item.price.toString()); // Pre-fill with asking price
-    setOfferModalVisible(true);
+  // --- ACTIONS ---
+
+  const handleCardPress = (item) => {
+    setSelectedProduct(item);
+    setDetailVisible(true);
   };
 
-  // Submit Offer
-  const handleSubmitOffer = async () => {
-    if (!offerPrice) return;
-    setOfferLoading(true);
+  // 1. ADD TO CART LOGIC
+  const handleAddToCart = async (data) => {
+    if (!user) {
+        setAlertConfig({ visible: true, title: "Login Required", message: "Please login to use cart." });
+        return;
+    }
+    try {
+        await axios.post(`${API_URL}/cart/add`, {
+            buyerId: user.id,
+            cropId: data.id,
+            quantity: data.selectedQty,
+            price: data.price
+        });
+        setAlertConfig({ visible: true, title: "Added to Cart", message: `${data.name} added successfully!` });
+        // Optionally close modal: setDetailVisible(false);
+    } catch (err) {
+        setAlertConfig({ visible: true, title: "Error", message: "Could not add to cart." });
+    }
+  };
 
+  // 2. BUY NOW CLICKED (Opens Payment ON TOP of Detail)
+  const onConfirmPurchase = (data) => {
+    if (!user) {
+        setAlertConfig({ visible: true, title: "Login Required", message: "Please login to buy." });
+        return;
+    }
+    setCheckoutData(data);
+    setPaymentVisible(true); // Detail remains open behind this
+  };
+
+  // 3. PAYMENT COMPLETED
+  const onPaymentComplete = async (method) => {
+    setPaymentVisible(false); // Close Payment
+    
     try {
         await axios.post(`${API_URL}/requests/add`, {
-            cropId: selectedCrop.id,
+            cropId: checkoutData.id,
             buyerId: user.id,
-            offerPrice: parseFloat(offerPrice),
-            quantity: selectedCrop.quantity // Defaulting to full quantity for now
+            offerPrice: checkoutData.price,
+            quantity: checkoutData.selectedQty,
+            totalAmount: checkoutData.totalAmount
         });
         
-        setOfferModalVisible(false);
-        setAlertConfig({ visible: true, title: "Success", message: "Offer sent to farmer successfully!" });
+        setDetailVisible(false); // NOW close detail modal
+        setAlertConfig({ 
+            visible: true, 
+            title: "Success!", 
+            message: `Request sent to farmer via ${method}.` 
+        });
     } catch (err) {
-        console.error(err);
-        setAlertConfig({ visible: true, title: "Error", message: "Failed to send offer. Try again." });
-    } finally {
-        setOfferLoading(false);
+        setAlertConfig({ visible: true, title: "Transaction Error", message: "Please try again." });
     }
-  };
-
-  // Call Farmer
-  const handleCall = (phone) => {
-    if (!phone) {
-        setAlertConfig({ visible: true, title: "Unavailable", message: "Phone number not available." });
-        return;
-    }
-    Linking.openURL(`tel:${phone}`);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
 
-      {/* --- CUSTOM ALERT --- */}
       <CustomAlert 
         visible={alertConfig.visible}
         title={alertConfig.title}
@@ -174,43 +143,24 @@ const RetailerHome = () => {
         onConfirm={() => setAlertConfig({ ...alertConfig, visible: false })}
       />
 
-      {/* --- OFFER MODAL (Android Compatible) --- */}
-      <Modal
-        visible={offerModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setOfferModalVisible(false)}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Make an Offer</Text>
-                    <TouchableOpacity onPress={() => setOfferModalVisible(false)}>
-                        <X size={24} color="#64748B" />
-                    </TouchableOpacity>
-                </View>
-                
-                <Text style={styles.modalSub}>
-                    Asking Price: <Text style={{fontWeight:'bold'}}>₹{selectedCrop?.price}</Text> for {selectedCrop?.name}
-                </Text>
+      {/* --- Detail Modal --- */}
+      <ProductDetailModal 
+        visible={detailVisible}
+        onClose={() => setDetailVisible(false)}
+        product={selectedProduct}
+        onConfirmPurchase={onConfirmPurchase}
+        onAddToCart={handleAddToCart}
+      />
 
-                <Text style={styles.label}>Your Offer Price (₹/{selectedCrop?.unit || 'q'})</Text>
-                <TextInput 
-                    style={styles.input} 
-                    value={offerPrice} 
-                    onChangeText={setOfferPrice} 
-                    keyboardType="numeric" 
-                    placeholder="Enter amount"
-                />
+      {/* --- Payment Modal (Shows on top of Detail) --- */}
+      <PaymentModal 
+        visible={paymentVisible}
+        amount={checkoutData?.totalAmount || '0'}
+        onClose={() => setPaymentVisible(false)}
+        onPay={onPaymentComplete}
+      />
 
-                <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitOffer} disabled={offerLoading}>
-                    {offerLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitText}>Send Offer</Text>}
-                </TouchableOpacity>
-            </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* --- HEADER --- */}
+      {/* --- Main Content --- */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Marketplace</Text>
         <TouchableOpacity style={styles.iconBtn}>
@@ -225,95 +175,51 @@ const RetailerHome = () => {
         stickyHeaderIndices={[1]} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        
-        {/* --- SEARCH --- */}
+        {/* Search & Filter UI (Same as before) */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Search size={20} color="#9CA3AF" />
-            <TextInput 
-              placeholder="Search crops, farmers..." 
-              placeholderTextColor="#9CA3AF"
-              style={styles.searchInput}
-              value={searchText}
-              onChangeText={setSearchText}
-            />
+            <TextInput placeholder="Search crops..." placeholderTextColor="#9CA3AF" style={styles.searchInput} value={searchText} onChangeText={setSearchText} />
           </View>
         </View>
 
-        {/* --- FILTERS --- */}
         <View style={{ backgroundColor: '#F8F9FA' }}> 
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.filterScrollContainer}
-          >
-            <TouchableOpacity style={styles.filterBtnActive}>
-              <SlidersHorizontal size={16} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.filterTextActive}>Sort</Text>
-            </TouchableOpacity>
-            
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContainer}>
+            <TouchableOpacity style={styles.filterBtnActive}><SlidersHorizontal size={16} color="#FFF" style={{ marginRight: 6 }} /><Text style={styles.filterTextActive}>Sort</Text></TouchableOpacity>
             {filters.map((filter, index) => (
-              <TouchableOpacity 
-                key={index} 
-                style={[styles.filterBtn, activeFilter === filter && styles.filterBtnSelected]}
-                onPress={() => setActiveFilter(filter)}
-              >
+              <TouchableOpacity key={index} style={[styles.filterBtn, activeFilter === filter && styles.filterBtnSelected]} onPress={() => setActiveFilter(filter)}>
                 <Text style={[styles.filterText, activeFilter === filter && styles.filterTextSelected]}>{filter}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* --- RESULTS COUNT --- */}
         <View style={styles.resultsHeader}>
           <Text style={styles.resultsTitle}>FRESH HARVESTS</Text>
           <Text style={styles.resultsCount}>{filteredProducts.length} Results</Text>
         </View>
 
-        {/* --- GRID --- */}
         {loading ? (
             <ActivityIndicator size="large" color="#16A34A" style={{marginTop: 50}} />
         ) : (
             <View style={styles.gridContainer}>
             {filteredProducts.map((item) => (
-                <View key={item.id} style={styles.card}>
-                
-                {/* Image */}
-                <View style={styles.imageContainer}>
-                    <Image 
-                        source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} 
-                        style={styles.cardImg} 
-                    />
-                    {item.aiGrade && (
-                        <View style={styles.gradeBadge}>
-                            <CheckCircle size={10} color="#16A34A" style={{ marginRight: 4 }} />
-                            <Text style={styles.gradeText}>{item.aiGrade}</Text>
-                        </View>
-                    )}
-                </View>
-                
-                {/* Content */}
-                <View style={styles.cardContent}>
-                    <Text style={styles.prodName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.farmerName} numberOfLines={1}>
-                        {item.farmer?.name || "Verified Farmer"} • {item.farmer?.location || "India"}
-                    </Text>
-                    
-                    <Text style={styles.price}>
-                    ₹{item.price} <Text style={styles.unit}>{item.unit || '/q'}</Text>
-                    </Text>
-
-                    {/* Actions */}
-                    <TouchableOpacity style={styles.buyBtn} onPress={() => openOfferModal(item)}>
-                         <Text style={styles.buyBtnText}>Make Offer</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.callBtn} onPress={() => handleCall(item.farmer?.phone)}>
-                        <Phone size={14} color="#1F2937" style={{ marginRight: 6 }} />
-                        <Text style={styles.callBtnText}>Call</Text>
-                    </TouchableOpacity>
-                </View>
-                </View>
+                <TouchableOpacity key={item.id} style={styles.card} onPress={() => handleCardPress(item)}>
+                    <View style={styles.imageContainer}>
+                        <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} />
+                        {item.aiGrade && (
+                            <View style={styles.gradeBadge}><CheckCircle size={10} color="#16A34A" style={{ marginRight: 4 }} /><Text style={styles.gradeText}>{item.aiGrade}</Text></View>
+                        )}
+                    </View>
+                    <View style={styles.cardContent}>
+                        <Text style={styles.prodName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.farmerName} numberOfLines={1}>{item.farmer?.name || "Verified Farmer"}</Text>
+                        <Text style={styles.price}>₹{item.price} <Text style={styles.unit}>{item.unit || '/q'}</Text></Text>
+                        <TouchableOpacity style={styles.buyBtn} onPress={() => handleCardPress(item)}>
+                            <Text style={styles.buyBtnText}>Make Offer</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
             ))}
             </View>
         )}
@@ -322,66 +228,39 @@ const RetailerHome = () => {
   );
 };
 
+// ... (Styles same as previous)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
-
-  /* Header */
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 15 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#0F172A' },
   iconBtn: { position: 'relative', padding: 4 },
   redDot: { position: 'absolute', top: 4, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1, borderColor: '#F8F9FA' },
-
-  /* Search */
   searchWrapper: { paddingHorizontal: 20, marginBottom: 15 },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', padding: 12, borderRadius: 12 },
   searchInput: { marginLeft: 10, flex: 1, fontSize: 16, color: '#0F172A' },
-
-  /* Filters */
   filterScrollContainer: { paddingHorizontal: 20, paddingBottom: 10 },
   filterBtnActive: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F172A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10 },
   filterTextActive: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
-  
   filterBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
   filterBtnSelected: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
   filterText: { color: '#475569', fontWeight: '600', fontSize: 13 },
   filterTextSelected: { color: '#FFF' },
-
-  /* Results Info */
   resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 10, marginBottom: 15 },
   resultsTitle: { fontSize: 12, fontWeight: 'bold', color: '#64748B', letterSpacing: 0.5 },
   resultsCount: { fontSize: 12, color: '#16A34A', fontWeight: 'bold' },
-
-  /* GRID SYSTEM */
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: CONTAINER_PADDING },
   card: { width: CARD_WIDTH, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
-
-  /* Card Internals */
   imageContainer: { position: 'relative' },
   cardImg: { width: '100%', height: 130, resizeMode: 'cover', backgroundColor: '#F3F4F6' },
   gradeBadge: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   gradeText: { fontSize: 10, fontWeight: 'bold', color: '#0F172A' },
-  
   cardContent: { padding: 12 },
   prodName: { fontSize: 15, fontWeight: 'bold', color: '#0F172A', marginBottom: 2 },
   farmerName: { fontSize: 11, color: '#64748B', marginBottom: 8 },
   price: { fontSize: 18, fontWeight: 'bold', color: '#0F172A', marginBottom: 12 },
   unit: { fontSize: 12, color: '#64748B', fontWeight: 'normal' },
-  
   buyBtn: { backgroundColor: '#22C55E', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginBottom: 8 },
   buyBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
-  callBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
-  callBtnText: { color: '#1F2937', fontWeight: '600', fontSize: 13 },
-
-  /* Modal Styles */
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#0F172A' },
-  modalSub: { fontSize: 14, color: '#64748B', marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#0F172A', marginBottom: 20 },
-  submitBtn: { backgroundColor: '#16A34A', padding: 16, borderRadius: 12, alignItems: 'center' },
-  submitText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });
 
 export default RetailerHome;

@@ -2,20 +2,18 @@ import React, { useState, useCallback } from 'react';
 import { 
   View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, StatusBar, ActivityIndicator, Alert 
 } from 'react-native';
-import { Search, Eye, Gavel, Plus, CheckCircle, XCircle, Clock } from 'lucide-react-native';
+import { Eye, Gavel, CheckCircle, XCircle, Clock, PackageCheck } from 'lucide-react-native';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '../config/api';
-import AddCropModal from '../components/AddCropModal';
 
 const FarmerMyCropsScreen = () => {
   const [activeTab, setActiveTab] = useState('Active'); // 'Active', 'Sold', 'Requests'
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]); 
   const [user, setUser] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
 
   // --- Load Data ---
   useFocusEffect(
@@ -23,13 +21,11 @@ const FarmerMyCropsScreen = () => {
       const fetchData = async () => {
         setLoading(true);
         try {
-          // 1. Get User
           const userData = await AsyncStorage.getItem('userData');
           if (!userData) return;
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
 
-          // 2. Fetch based on Tab
           let url = '';
           if (activeTab === 'Requests') {
              url = `${API_URL}/requests/history/${parsedUser.id}`;
@@ -71,34 +67,36 @@ const FarmerMyCropsScreen = () => {
     }
   };
 
+  // --- Helper to determine Status UI for History ---
+  const getHistoryStatusUI = (item) => {
+    // 1. Rejected at Request Stage
+    if (item.status === 'REJECTED') {
+        return { text: 'Request Rejected', color: '#EF4444', icon: XCircle, bg: '#FEF2F2' };
+    }
+    
+    // 2. Accepted - Check Order Status
+    const orderStatus = item.orderStatus || 'CONFIRMED';
+    
+    if (orderStatus === 'DELIVERED') {
+        return { text: 'Deal Completed', color: '#16A34A', icon: PackageCheck, bg: '#DCFCE7' };
+    } else if (orderStatus === 'CANCELLED') {
+        return { text: 'Order Cancelled', color: '#EF4444', icon: XCircle, bg: '#FEF2F2' };
+    } else {
+        return { text: 'Deal In Progress', color: '#F59E0B', icon: Clock, bg: '#FEF3C7' };
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
 
-      {/* --- Add Crop Modal --- */}
-      {user && (
-        <AddCropModal 
-          visible={modalVisible} 
-          onClose={() => setModalVisible(false)} 
-          onCropAdded={() => {
-            Alert.alert("Success", "New listing added!");
-            setActiveTab('Active');
-          }} 
-          userId={user.id} 
-        />
-      )}
-
-      {/* --- HEADER (Updated) --- */}
+      {/* --- HEADER --- */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={styles.logoBox}><Text style={{fontSize:18}}>🍃</Text></View>
           <Text style={styles.headerTitle}>My Listings</Text>
         </View>
-        
-        {/* PLUS ICON MOVED HERE (Right Side) */}
-        <TouchableOpacity style={styles.headerAddBtn} onPress={() => setModalVisible(true)}>
-           <Plus size={22} color="#FFF" />
-        </TouchableOpacity>
+        {/* REMOVED PLUS ICON HERE */}
       </View>
 
       {/* --- TABS --- */}
@@ -130,26 +128,28 @@ const FarmerMyCropsScreen = () => {
             
             // --- 1. REQUEST HISTORY CARD ---
             if (activeTab === 'Requests') {
-              // SAFE CHECK: ?. (Optional Chaining) prevents crash if crop/buyer is null
               const cropImg = item.crop?.imageUrl || 'https://via.placeholder.com/50';
               const cropName = item.crop?.name || 'Unknown Crop';
               const buyerName = item.buyer?.businessName || item.buyer?.name || 'Unknown Buyer';
               const buyerPhone = item.buyer?.phone || '';
+              
+              const statusUI = getHistoryStatusUI(item);
+              const StatusIcon = statusUI.icon;
 
               return (
                 <View key={item.id} style={styles.reqCard}>
-                  <View style={styles.reqHeader}>
-                    <Text style={styles.reqTitle}>
-                      {item.status === 'ACCEPTED' ? 'Deal In Progress' : 'Request Rejected'}
+                  <View style={[styles.reqHeader, { backgroundColor: statusUI.bg }]}>
+                    <Text style={[styles.reqTitle, { color: statusUI.color }]}>
+                      {statusUI.text}
                     </Text>
-                    {item.status === 'ACCEPTED' ? <Clock size={16} color="#F59E0B" /> : <XCircle size={16} color="#EF4444" />}
+                    <StatusIcon size={18} color={statusUI.color} />
                   </View>
-                  <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 10}}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 16, paddingBottom: 16}}>
                     <Image source={{ uri: cropImg }} style={styles.smallImg} />
                     <View style={{marginLeft: 12}}>
                       <Text style={styles.cropName}>{cropName}</Text>
-                      <Text style={styles.qty}>Buyer: {buyerName}</Text>
-                      <Text style={styles.qty}>{buyerPhone}</Text>
+                      <Text style={styles.qty}>Buyer: <Text style={{fontWeight:'bold', color:'#334155'}}>{buyerName}</Text></Text>
+                      <Text style={styles.qty}>Phone: {buyerPhone}</Text>
                     </View>
                   </View>
                 </View>
@@ -199,6 +199,8 @@ const FarmerMyCropsScreen = () => {
           })
         )}
       </ScrollView>
+      
+      {/* REMOVED FAB */}
     </View>
   );
 };
@@ -219,17 +221,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center' },
   logoBox: { width: 32, height: 32, backgroundColor: '#16A34A', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#16A34A' },
-  
-  // New Header Add Button Style
-  headerAddBtn: {
-    backgroundColor: '#16A34A',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2
-  },
 
   // Tabs
   tabContainer: { flexDirection: 'row', backgroundColor: '#E2E8F0', marginHorizontal: 20, borderRadius: 12, padding: 4, marginBottom: 20, marginTop: 10 },
@@ -258,10 +249,11 @@ const styles = StyleSheet.create({
   soldBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
   soldTag: { marginTop: 5, backgroundColor: '#EF4444', padding: 10, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 
-  reqCard: { backgroundColor: '#FFF', marginHorizontal: 20, marginBottom: 12, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-  reqHeader: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 8 },
-  reqTitle: { fontWeight: 'bold', color: '#64748B', fontSize: 12, textTransform: 'uppercase' },
-  smallImg: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#E2E8F0' },
+  // Request History Card
+  reqCard: { backgroundColor: '#FFF', marginHorizontal: 20, marginBottom: 12, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9', elevation: 1 },
+  reqHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
+  reqTitle: { fontWeight: 'bold', fontSize: 13, textTransform: 'uppercase' },
+  smallImg: { width: 48, height: 48, borderRadius: 8, backgroundColor: '#E2E8F0' },
 
   emptyState: { alignItems: 'center', marginTop: 40 }
 });

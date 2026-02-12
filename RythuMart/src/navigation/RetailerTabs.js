@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Store, ClipboardList, User } from 'lucide-react-native';
+import { Store, ClipboardList, User, ShoppingCart } from 'lucide-react-native';
 
 // --- Import Screens ---
 import RetailerHome from '../screens/RetailerHome';
 import RetailerOrders from '../screens/RetailerOrders';
-import RetailerProfile from '../screens/RetailerProfile'; // <--- NEW IMPORT
+import RetailerProfile from '../screens/RetailerProfile';
+import CartScreen from '../screens/CartScreen'; // <--- NEW IMPORT
 
 const Tab = createBottomTabNavigator();
 
@@ -15,8 +16,8 @@ export default function RetailerTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#22C55E', // Retailer Green
-        tabBarInactiveTintColor: '#94A3B8', // Gray
+        tabBarActiveTintColor: '#22C55E',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
           height: Platform.OS === 'ios' ? 90 : 70, 
           paddingBottom: Platform.OS === 'ios' ? 30 : 12, 
@@ -26,10 +27,7 @@ export default function RetailerTabs() {
           borderTopColor: '#F1F5F9',
           elevation: 5,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        }
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' }
       }}
     >
       <Tab.Screen 
@@ -41,6 +39,16 @@ export default function RetailerTabs() {
         }}
       />
       
+      {/* NEW CART TAB */}
+      <Tab.Screen 
+        name="Cart" 
+        component={CartScreen} 
+        options={{
+          tabBarLabel: 'Cart',
+          tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
+        }}
+      />
+
       <Tab.Screen 
         name="Orders" 
         component={RetailerOrders} 
