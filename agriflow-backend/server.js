@@ -18,6 +18,7 @@ const cartRoutes = require('./routes/cart');
 const ratingRoutes = require('./routes/ratings');
 const { updateMarketPrices } = require('./services/marketService');
 const marketRoutes = require('./routes/market');
+const assistantRoutes = require('./routes/assistant');
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -31,6 +32,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 app.get('/', (req, res) => {
   res.send('AgriFlow Backend is Running 🚀');
