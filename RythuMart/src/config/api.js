@@ -1,1 +1,1 @@
-export const API_URL = 'http://16.16.6.149:5000/api';
+export const API_URL = 'http://your_ip:5000/api'; //use ipconfig in cmd and select IPv4 Address, example 10.126.xxx.xx

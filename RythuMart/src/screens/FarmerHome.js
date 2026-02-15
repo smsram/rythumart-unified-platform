@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { API_URL } from '../config/api';
 import AddCropModal from '../components/AddCropModal';
 import PricePredictionCard from '../components/PricePredictionCard';
+import VoiceAssistantModal from '../components/VoiceAssistantModal'; // <--- IMPORTED
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ const ALL_CROPS = [
 
 const FarmerHome = () => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [voiceVisible, setVoiceVisible] = useState(false); // <--- VOICE STATE
   const [myCrops, setMyCrops] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null); 
@@ -84,8 +86,6 @@ const FarmerHome = () => {
     try {
         const marketRes = await axios.get(`${API_URL}/market/prices?limit=100`);
         const currentItem = marketRes.data.find(i => i.cropName === cropName);
-        
-        // FIX: Default fallback is now 20 (kg price) not 2000 (ton price)
         const currentPrice = currentItem ? currentItem.price : 20; 
 
         const response = await axios.post(`${API_URL}/market/analyze`, {
@@ -100,16 +100,12 @@ const FarmerHome = () => {
 
     } catch (error) {
         console.log("Analysis fetch error, using fallbacks");
-        const base = 20; // FIX: Base price per KG
-        
-        // Mock History
+        const base = 20; 
         setHistoryData(Array.from({length: 7}, (_, i) => ({
             day: ['Mon','Tue','Wed','Thu','Fri','Sat','Today'][i],
             date: `Day -${6-i}`,
-            price: Math.floor(base + (i * 0.5) + (Math.random() * 2)) // Smaller fluctuations for KG
+            price: Math.floor(base + (i * 0.5) + (Math.random() * 2)) 
         })));
-
-        // Mock Forecast
         setForecastData(Array.from({length: 7}, (_, i) => ({
             day: ['Tom','Tue','Wed','Thu','Fri','Sat','Sun'][i],
             date: `Day +${i+1}`,
@@ -133,11 +129,24 @@ const FarmerHome = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Fix: Translucent StatusBar for better look, but padded in container */}
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
       
+      {/* --- MODALS --- */}
       {user && user.id && (
-        <AddCropModal visible={modalVisible} onClose={() => setModalVisible(false)} onCropAdded={() => fetchCrops(user.id)} userId={user.id} />
+        <>
+            <AddCropModal 
+                visible={modalVisible} 
+                onClose={() => setModalVisible(false)} 
+                onCropAdded={() => fetchCrops(user.id)} 
+                userId={user.id} 
+            />
+            {/* VOICE ASSISTANT MODAL INTEGRATED HERE */}
+            <VoiceAssistantModal 
+                visible={voiceVisible} 
+                onClose={() => setVoiceVisible(false)} 
+                userId={user.id} 
+            />
+        </>
       )}
 
       {/* SEARCH CROP MODAL */}
@@ -174,7 +183,7 @@ const FarmerHome = () => {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <View style={styles.logoIcon}><Text style={styles.logoLeaf}>🍃</Text></View>
-          <Text style={styles.appName}>AgriFlow</Text>
+          <Text style={styles.appName}>Rythu Mart</Text>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.locationChip}>
@@ -207,12 +216,18 @@ const FarmerHome = () => {
         />
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionCard} onPress={() => Alert.alert("Coming Soon", "Voice listing features.")}>
-            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}><Mic size={24} color="#16A34A" /></View>
+          {/* UPDATED: "Speak to List" now opens the Voice Modal */}
+          <TouchableOpacity style={styles.actionCard} onPress={() => setVoiceVisible(true)}>
+            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+                <Mic size={24} color="#16A34A" />
+            </View>
             <Text style={styles.actionTitle}>Speak to List</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionCard} onPress={() => Alert.alert("Coming Soon", "AI Quality Grading.")}>
-            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}><Camera size={24} color="#16A34A" /></View>
+            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+                <Camera size={24} color="#16A34A" />
+            </View>
             <Text style={styles.actionTitle}>Scan Quality</Text>
           </TouchableOpacity>
         </View>
@@ -259,22 +274,20 @@ const FarmerHome = () => {
 };
 
 const styles = StyleSheet.create({
-  // FIX: Using SafeAreaView + paddingTop for Android creates the perfect spacing
   container: { 
     flex: 1, 
-    backgroundColor: '#fff', // Header background color
+    backgroundColor: '#fff', 
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 
   },
   
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   
-  // Header styles updated to remove excessive padding since Container handles it
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
     paddingHorizontal: 20, 
-    paddingVertical: 15, // Reduced from 50+ to standard padding
+    paddingVertical: 15, 
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6'
