@@ -1,6 +1,3 @@
-Here is the fully updated **README.md** file. It includes the specific API registration link, the guide for changing your IP address for local testing, and the commands to build and run the project.
-
-```markdown
 # AgriFlow - Smart Farming Assistant
 
 AgriFlow is a comprehensive mobile application for farmers and retailers to manage crops, view market prices, and connect with each other.
@@ -56,7 +53,7 @@ Since the app runs on your phone and the backend runs on your PC, they must be o
 
 ---
 
-## 📱 3. Android Build Setup (First Time Only)
+## 📱 3. Android Build Setup (One-Time Setup)
 
 To use native modules (like Maps or Gesture Handler), you must generate the Android native code and build it once.
 
@@ -64,31 +61,40 @@ To use native modules (like Maps or Gesture Handler), you must generate the Andr
 Open a terminal in the `RythuMart` folder and run:
 ```bash
 npx expo prebuild
-
 ```
-
-*This creates the `android` folder.*
+*This command creates the `android` folder in your project root.*
 
 ### **Step B: Configure Local Properties**
 
-1. Navigate to `RythuMart/android/`.
-2. Open (or create) the file named `local.properties`.
-3. Add your Android SDK path:
-* **Windows**: `sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk`
-* **Mac/Linux**: `sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk`
+1. Navigate to the `RythuMart/android/` folder.
+2. Create a file named `local.properties` (if it doesn't exist).
+3. Add your Android SDK path inside this file:
+**For Windows Users:**
+```properties
+sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+
+```
+
+
+*(Replace `YOUR_USERNAME` with your actual PC username)*
+**For Mac/Linux Users:**
+```properties
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+```
 
 
 
 ### **Step C: Build the Application**
 
-Run this command to compile the app and install it on your emulator/device:
+Run this command to compile the app and install it on your connected emulator or physical device:
 
 ```bash
 npx expo run:android
 
 ```
 
-*(If this fails, try running `cd android && ./gradlew clean` and try again).*
+*This process may take 5-10 minutes. If it fails, run `cd android && ./gradlew clean`, then try again.*
 
 ---
 
@@ -114,8 +120,8 @@ npx expo start
 
 ```
 
-* **To run on Android**: Press `a` in the terminal.
-* **If you face issues**: Run `npx expo start -c` to clear the cache.
+* **To open on Android**: Press `a` in the terminal.
+* **If the app crashes or doesn't update**: Run `npx expo start -c` to clear the cache.
 
 ---
 
@@ -131,7 +137,5 @@ npx expo start
 * You need to rebuild the native app. Run `npx expo run:android` again.
 
 
-
-```
 
 ```
