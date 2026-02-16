@@ -1,6 +1,6 @@
-# AgriFlow - Smart Farming Assistant
+# RythuMart - Smart Farming Assistant
 
-AgriFlow is a comprehensive mobile application for farmers and retailers to manage crops, view market prices, and connect with each other.
+RythuMart is a comprehensive mobile application for farmers and retailers to manage crops, view market prices, and connect with each other.
 
 ## 📋 Prerequisites
 
