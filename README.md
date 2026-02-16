@@ -135,7 +135,3 @@ npx expo start
 
 * **"RNGestureHandlerModule not found"**:
 * You need to rebuild the native app. Run `npx expo run:android` again.
-
-
-
-```
